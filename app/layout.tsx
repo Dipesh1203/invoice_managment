@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
+import { Provider } from "react-redux"
+import { store } from "./redux/store";
+import WrapperProvider from "./components/WrapperProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,11 +28,28 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+      <WrapperProvider>
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        >
+          <div className="min-h-screen bg-white text-slate-900">
+            <header className="border-b bg-white/50">
+              <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+                <Link href="/" className="text-xl font-semibold">InvoiceMgmt</Link>
+                <nav className="space-x-4 text-sm text-slate-700">
+                  <Link href="/invoices" className="hover:underline">Invoices</Link>
+                  <Link href="/products" className="hover:underline">Products</Link>
+                  <Link href="/customers" className="hover:underline">Customers</Link>
+                </nav>
+              </div>
+            </header>
+
+            <main>
+              {children}
+            </main>
+          </div>
+        </body>
+      </WrapperProvider>
     </html>
   );
 }
