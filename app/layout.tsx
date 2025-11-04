@@ -35,7 +35,7 @@ export default function RootLayout({
           <div className="min-h-screen bg-white text-slate-900">
             <header className="border-b bg-white/50">
               <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-                <Link href="/" className="text-xl font-semibold">InvoiceMgmt</Link>
+                <Link href="/" className="text-xl font-semibold">AccuBill</Link>
                 <nav className="space-x-4 text-sm text-slate-700">
                   <Link href="/invoices" className="hover:underline">Invoices</Link>
                   <Link href="/products" className="hover:underline">Products</Link>

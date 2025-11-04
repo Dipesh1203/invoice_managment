@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import SectionCard from "./components/SectionCard";
+import UploadBtn from "./components/UploadBtn";
 
 export default function Home() {
   return (
@@ -13,6 +14,11 @@ export default function Home() {
         </header>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="cursor-pointer rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition">
+            <h3 className="text-lg font-medium text-slate-900">Upload</h3>
+            <p className="mt-2 text-sm text-slate-600">Upload your files using this upload button, all file types (Excel, PDF, images)</p>
+            <div className="mt-4 text-sm text-sky-600 font-medium"><UploadBtn /></div>
+          </div>
           <Link href="/invoices" aria-label="Invoices">
             <SectionCard
               title="Invoices"
