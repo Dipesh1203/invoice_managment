@@ -2,7 +2,22 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { store } from "../redux/store";
-import { addInvoice } from "../redux/slices/invoiceSlice";
+import { addCustomer, addInvoice, addItem } from "../redux/slices/invoiceSlice";
+
+
+interface ParsedInvoiceResponse {
+    invoiceInformation: {
+        consignee?: string;
+        consigneePhone?: string;
+        gstin?: string;
+    };
+    items?: any[];
+    chargesAndTotals: {
+        total?: string;
+    };
+    bankDetails?: any;
+    additionalNotes?: string;
+}
 
 export default function UploadBtn() {
     const [files, setFiles] = useState<File[]>([]);
@@ -15,7 +30,7 @@ export default function UploadBtn() {
         "image/png",
         "image/jpeg",
         "application/pdf",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel", "text/csv"
     ];
     const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -109,25 +124,64 @@ export default function UploadBtn() {
                 base64Files.map(async (base64) => {
                     const mimeType = base64.split(",")[0].split(":")[1].split(";")[0];
                     const base64Data = base64.split(",")[1];
-
+                    console.log("Mimetype ", mimeType)
                     if (
                         mimeType ===
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || mimeType === "application/vnd.ms-excel" || mimeType === "text/csv"
                     ) {
-                        const res = await fetch("/api/processXlsx", {
+                        const res = await fetch("/api/processing", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ file: base64Data }),
                         });
                         const json = await res.json();
                         if (json.success) {
-                            (json.data as any[]).forEach((inv) => store.dispatch(addInvoice(inv)));
+                            const parsed: ParsedInvoiceResponse = json.data;
+                            const items = (parsed.items || []).map((i) => ({
+                                ...i,
+                                id: Date.now().toString() + Math.random().toString().slice(2, 8),
+                            }));
+
+                            const invoiceTotalAmount = parsed.chargesAndTotals?.total || "0.00";
+
+                            const invoiceDetails = {
+                                invoiceInformation: parsed.invoiceInformation || {},
+                                items: items,
+                                chargesAndTotals: parsed.chargesAndTotals || {},
+                                bankDetails: parsed.bankDetails || {},
+                                additionalNotes: parsed.additionalNotes || "",
+                            };
+
+                            store.dispatch(addInvoice(invoiceDetails));
+
+                            // compute the invoice index we just added
+                            const state = store.getState();
+                            const invoiceIndex = (state.invoices.invoiceData?.length || 1) - 1;
+
+                            if (invoiceDetails.invoiceInformation) {
+                                store.dispatch(
+                                    addCustomer({
+                                        invoiceIndex,
+                                        customer: {
+                                            ...invoiceDetails.invoiceInformation,
+                                        },
+                                    })
+                                );
+                            }
+                            if (items.length > 0) {
+                                items.forEach((item) => {
+                                    // addItem expects payload { invoiceIndex, item }
+                                    store.dispatch(addItem({ invoiceIndex, item } as any));
+                                });
+                            }
+
+                            console.log("Invoice data successfully processed and normalized.");
                             return true;
                         }
                         return false;
                     }
 
-                    const res = await fetch("/api/extract", {
+                    const res = await fetch("/api/extraction", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ file: base64Data, mimeType }),
@@ -135,16 +189,54 @@ export default function UploadBtn() {
 
                     const json = await res.json();
                     if (json.success) {
-                        const responseData = json.data.replace(/^```json|```$/g, "").trim();
-                        const parsed = JSON.parse(responseData);
+                        // LLM endpoint may return parsed JSON or a raw string; handle both
+                        let parsed: ParsedInvoiceResponse;
+                        if (typeof json.data === "string") {
+                            const responseData = json.data.replace(/^```json|```$/g, "").trim();
+                            parsed = JSON.parse(responseData);
+                        } else {
+                            parsed = json.data as ParsedInvoiceResponse;
+                        }
+                        let items = parsed.items || [];
+
+                        // ensure items have unique ids
+                        items = items.map((i) => ({
+                            ...i,
+                            id: Date.now().toString() + Math.random().toString().slice(2, 8),
+                        }));
+
+                        const invoiceTotalAmount = parsed.chargesAndTotals?.total || "0.00";
+
                         const invoiceDetails = {
-                            invoiceInformation: { ...parsed.invoiceInformation },
-                            items: parsed.items || [],
+                            invoiceInformation: parsed.invoiceInformation || {},
+                            items: items,
                             chargesAndTotals: parsed.chargesAndTotals || {},
                             bankDetails: parsed.bankDetails || {},
                             additionalNotes: parsed.additionalNotes || "",
                         };
+
                         store.dispatch(addInvoice(invoiceDetails));
+
+                        const state = store.getState();
+                        const invoiceIndex = (state.invoices.invoiceData?.length || 1) - 1;
+
+                        if (invoiceDetails.invoiceInformation) {
+                            store.dispatch(
+                                addCustomer({
+                                    invoiceIndex,
+                                    customer: {
+                                        ...invoiceDetails.invoiceInformation,
+                                    },
+                                })
+                            );
+                        }
+                        if (items.length > 0) {
+                            items.forEach((item) => {
+                                store.dispatch(addItem({ invoiceIndex, item } as any));
+                            });
+                        }
+
+                        console.log("Invoice data successfully processed and normalized.");
                         return true;
                     }
                     return false;

@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-interface InvoiceItem {
+export interface InvoiceItem {
+  id: string;
   description?: string;
   rate?: string;
   quantity?: string;
@@ -107,9 +108,92 @@ const invoicesSlice = createSlice({
         }
       }
     },
+    addItem: (
+      state,
+      action: PayloadAction<{ invoiceIndex: number; item: InvoiceItem }>
+    ) => {
+      const { invoiceIndex, item } = action.payload;
+      const invoice = state.invoiceData?.[invoiceIndex];
+      if (invoice) {
+        invoice.items = [...(invoice.items || []), item];
+      }
+    },
+
+    updateItem: (
+      state,
+      action: PayloadAction<{
+        invoiceIndex: number;
+        itemIndex: number;
+        field: string;
+        value: string;
+      }>
+    ) => {
+      const { invoiceIndex, itemIndex, field, value } = action.payload;
+      const invoice = state.invoiceData?.[invoiceIndex];
+      if (!invoice?.items?.[itemIndex]) return;
+      invoice.items[itemIndex][field] = value;
+    },
+
+    removeItem: (
+      state,
+      action: PayloadAction<{ invoiceIndex: number; itemIndex: number }>
+    ) => {
+      const { invoiceIndex, itemIndex } = action.payload;
+      const invoice = state.invoiceData?.[invoiceIndex];
+      if (invoice?.items) {
+        invoice.items = invoice.items.filter((_, i) => i !== itemIndex);
+      }
+    },
+    addCustomer: (
+      state,
+      action: PayloadAction<{
+        invoiceIndex: number;
+        customer: {
+          consignee?: string;
+          consigneePhone?: string;
+          gstin?: string;
+          placeOfSupply?: string;
+        };
+      }>
+    ) => {
+      const { invoiceIndex, customer } = action.payload;
+      const invoice = state.invoiceData?.[invoiceIndex];
+      if (!invoice) return;
+
+      invoice.invoiceInformation = {
+        ...invoice.invoiceInformation,
+        ...customer,
+      };
+    },
+
+    updateCustomer: (
+      state,
+      action: PayloadAction<{
+        invoiceIndex: number;
+        field: string;
+        value: string;
+      }>
+    ) => {
+      const { invoiceIndex, field, value } = action.payload;
+      const invoice = state.invoiceData?.[invoiceIndex];
+      if (!invoice) return;
+
+      invoice.invoiceInformation = {
+        ...invoice.invoiceInformation,
+        [field]: value,
+      };
+    },
   },
 });
 
-export const { addInvoice, updateInvoice } = invoicesSlice.actions;
+export const {
+  addInvoice,
+  updateInvoice,
+  addItem,
+  updateCustomer,
+  updateItem,
+  removeItem,
+  addCustomer,
+} = invoicesSlice.actions;
 
 export default invoicesSlice.reducer;
