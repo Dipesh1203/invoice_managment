@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { normalizeRowsToInvoice } from "@/app/utils/normalizeInvoice";
+import { v4 as uuidv4 } from "uuid";
 
 function normalizeKey(k: any) {
   if (k == null) return "";
@@ -130,9 +131,7 @@ export async function POST(req: Request) {
 
     invoice.items = invoice.items.map((item: any) => ({
       ...item,
-      id:
-        item?.id ||
-        Date.now().toString() + Math.random().toString().slice(2, 8),
+      id: uuidv4(),
     }));
 
     return NextResponse.json({ success: true, data: invoice });

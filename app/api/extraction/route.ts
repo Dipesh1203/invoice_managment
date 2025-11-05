@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { base64ToGenerativePart } from "@/app/utils/utils";
+import { v4 as uuidv4 } from "uuid";
+import { InvoiceItem } from "@/app/redux/slices/invoiceSlice";
 
 const API_KEY = process.env.GEMINI_API_KEY;
 
@@ -48,53 +50,73 @@ export async function POST(req: Request) {
     const cleanedFileBase64 = fileBase64.replace(/\s/g, "");
     const documentPart = base64ToGenerativePart(cleanedFileBase64, mimeType);
 
-    const promptText = `Please extract all relevant information from the document or image and provide it as a raw JSON object string using the following structure. Fill in all available fields, and for any missing field, leave the value as an empty string ("").
+    const promptText = `Extract all relevant information from the provided document or image and return ONLY a raw JSON object string following the exact structure below.
+
+If a field is not present, set its value to an empty string "".
+For arrays, return an empty array [] if no data exists.
+Do NOT include any extra text, descriptions, or markdown — ONLY return the JSON.
 
 {
   "invoiceInformation": {
-    "consignee": "<Consignee Name>",
-    "consigneePhone": "<Consignee Phone>",
-    "gstin": "<GSTIN Number>",
-    "invoiceNumber": "<Invoice Number>",
-    "invoiceDate": "<Invoice Date>",
-    "placeOfSupply": "<Place of Supply>",
-    "companyName": "<Company Name>",
-    "companyGSTIN": "<Company GSTIN>",
-    "companyPhone": "<Company Phone>"
+    "consignee": "",
+    "consigneePhone": "",
+    "consigneeAddress": "",
+    "gstin": "",
+    "invoiceNumber": "",
+    "invoiceDate": "",
+    "placeOfSupply": "",
+    "companyName": "",
+    "companyAddress": "",
+    "companyGSTIN": "",
+    "companyPhone": "",
+    "companyEmail": ""
   },
   "items": [
     {
-      "description": "<Item Description>",
-      "rate": "<Item Rate>",
-      "quantity": "<Item Quantity>",
-      "taxableValue": "<Item Taxable Value>",
-      "gst": "<GST Amount>",
-      "amount": "<Item Amount>"
+      "id": "",
+      "description": "",
+      "quantity": "",
+      "rate": "",
+      "taxableValue": "",
+      "gstRate": "",
+      "gstAmount": "",
+      "discount": "",
+      "amount": ""
     }
   ],
   "chargesAndTotals": {
-    "makingCharges": "<Making Charges>",
-    "debitCardCharges": "<Debit Card Charges>",
-    "shippingCharges": "<Shipping Charges>",
-    "taxableAmount": "<Taxable Amount>",
-    "cgst": "<CGST>",
-    "sgst": "<SGST>",
-    "total": "<Total>",
-    "amountPayable": "<Amount Payable>",
-    "totalAmountDue": "<Total Amount Due>",
-    "totalItemsQty": "<Total Items Quantity>"
+    "makingCharges": "",
+    "debitCardCharges": "",
+    "shippingCharges": "",
+    "taxableAmount": "",
+    "taxDetails": [
+      {
+        "taxType": "",
+        "percentage": "",
+        "amount": ""
+      }
+    ],
+    "roundedTotal": "",
+    "amountPayable": "",
+    "totalAmountDue": "",
+    "totalItemsQty": ""
   },
   "bankDetails": {
-    "bankName": "<Bank Name>",
-    "accountNumber": "<Account Number>",
-    "ifscCode": "<IFSC Code>",
-    "branch": "<Branch>",
-    "beneficiaryName": "<Beneficiary Name>"
+    "bankName": "",
+    "accountNumber": "",
+    "ifscCode": "",
+    "branch": "",
+    "beneficiaryName": ""
   },
-  "additionalNotes": "<Additional Notes or Terms>"
+  "notes": "",
+  "terms": ""
 }
 
-Do not include any text, comments, or markdown (like JSON code blocks) outside of the JSON object itself.`;
+Important Rules:
+• Follow field names EXACTLY as provided.
+• Do NOT modify structure.
+• Do NOT include markdown formatting or a code block.
+• Do NOT return explanation text — ONLY return the JSON object.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -108,6 +130,9 @@ Do not include any text, comments, or markdown (like JSON code blocks) outside o
     // Try to parse LLM response as JSON so downstream code receives an object
     try {
       const parsed = JSON.parse(extractedData);
+      if (parsed && parsed?.items) {
+        parsed.map((i: InvoiceItem) => ({ ...i, id: uuidv4() }));
+      }
       return NextResponse.json({ success: true, data: parsed });
     } catch (e) {
       // If parsing fails, return raw text but client should handle this case

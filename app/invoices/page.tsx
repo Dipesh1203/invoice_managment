@@ -2,176 +2,214 @@
 import Link from "next/link";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../redux/store";
-import { updateInvoice } from "../redux/slices/invoiceSlice";
+import {
+    InvoiceInformation,
+    InvoiceItem,
+    updateInvoiceInformation,
+    updateItem,
+} from "../redux/slices/invoiceSlice";
 
 export default function InvoicesPage() {
-    const invoiceData = useSelector((state: RootState) => state.invoices.invoiceData);
+    const invoiceData = useSelector(
+        (state: RootState) => state.invoices.invoiceData
+    );
     const dispatch = useDispatch();
 
-    console.log("Invoice ", invoiceData);
-    const handleChange = (
+    const handleItemChange = (
         e: React.ChangeEvent<HTMLInputElement>,
         invoiceIndex: number,
         itemIndex: number,
-        field: string
+        field: keyof InvoiceItem
     ) => {
-        let updatedValue = e.target.value;
+        let updatedValue = e.target.value.replace(/,/g, "");
+        dispatch(updateItem({ invoiceIndex, itemIndex, field, value: updatedValue }));
+    };
 
-        if (field === 'quantity' || field === 'amount') {
-            updatedValue = updatedValue.replace(/,/g, '');
-        }
-
+    const handleInvoiceInfoChange = (
+        e: React.ChangeEvent<HTMLInputElement>,
+        invoiceIndex: number,
+        field: keyof InvoiceInformation
+    ) => {
         dispatch(
-            updateInvoice({ invoiceIndex, itemIndex, field, value: updatedValue })
+            updateInvoiceInformation({
+                invoiceIndex,
+                data: { [field]: e.target.value },
+            })
         );
     };
 
-    const formatNumberWithoutCommas = (value: string | number) => {
-        if (!value) return '';
-        return Number(String(value).replace(/,/g, ''));
+    const formatNumberWithoutCommas = (value?: string | number) =>
+        value ? Number(String(value).replace(/,/g, "")) : "";
+
+    const formatDate = (rawDate: string) => {
+        const d = new Date(rawDate);
+        if (isNaN(d.getTime())) return "";
+        return d.toISOString().slice(0, 10);
     };
 
-    const formatDate = (date: string) => {
-        const d = new Date(date);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
+    const isEmpty = (v: any) =>
+        v == null || (typeof v === "string" && v.trim() === "");
 
     return (
         <section className="max-w-5xl mx-auto p-8">
             <div className="mb-6">
-                <Link href="/" className="text-sm text-sky-600">← Back to home</Link>
+                <Link href="/" className="text-sm text-sky-600">
+                    ← Back to home
+                </Link>
             </div>
+
             <header>
                 <h2 className="text-2xl font-semibold">Invoices</h2>
-                <p className="mt-2 text-slate-600">List and manage invoices (placeholder).</p>
             </header>
 
-            {invoiceData?.length === 0 ? <div className="mt-6">
-                <p className="text-slate-500">This page will list invoices and allow creating/editing them. Connect to your store or API to render data here.</p>
-            </div> : (
-                <div className="overflow-x-auto">
-                    <div className="space-y-6">
-                        {invoiceData?.map((invoice, invoiceIndex) => (
-                            <div
-                                key={invoiceIndex}
-                                className="border bg-white rounded-lg shadow-lg p-6"
-                            >
-                                {/* Invoice Header */}
-                                <div className="flex justify-between mb-4">
-                                    <div>
-                                        <h3 className="text-lg font-semibold">
-                                            Invoice Number:{' '}
-                                            {invoice.invoiceInformation?.invoiceNumber}
-                                        </h3>
-                                        <p className="text-gray-600">
-                                            Customer Name:{' '}
-                                            <input
-                                                type="text"
-                                                value={invoice.invoiceInformation?.consignee || ''}
-                                                onChange={(e) =>
-                                                    handleChange(e, invoiceIndex, -1, 'consignee')
-                                                }
-                                                className="w-auto border-gray-300 rounded-md p-2 ml-2"
-                                            />
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-gray-600">
-                                            Invoice Date:{' '}
-                                            <input
-                                                readOnly
-                                                type="date"
-                                                value={
-                                                    invoice.invoiceInformation?.invoiceDate
-                                                        ? formatDate(invoice.invoiceInformation.invoiceDate)
-                                                        : ''
-                                                }
-                                                onChange={(e) =>
-                                                    handleChange(e, invoiceIndex, -1, 'invoiceDate')
-                                                }
-                                                className="w-auto border-gray-300 rounded-md p-2"
-                                            />
-                                        </p>
+            {invoiceData?.length === 0 ? (
+                <div className="mt-6 text-slate-500">
+                    No invoices found. Please upload to process invoice data.
+                </div>
+            ) : (
+                <div className="space-y-6 mt-6">
+                    {invoiceData?.map((invoice, invoiceIndex) => (
+                        <div
+                            key={invoiceIndex}
+                            className="border bg-white rounded-lg shadow-lg p-6"
+                        >
+                            {/* Header */}
+                            <div className="flex justify-between mb-4">
+                                <div>
+                                    <h3 className="font-semibold text-lg">
+                                        #{invoiceIndex + 1} — Invoice Number:{" "}
+                                        {invoice.invoiceInformation?.invoiceNumber}
+                                    </h3>
+
+                                    {/* Consignee Name */}
+                                    <p className="text-gray-600">
+                                        Customer:{" "}
+                                        <input
+                                            type="text"
+                                            value={invoice.invoiceInformation?.consignee || ""}
+                                            onChange={(e) =>
+                                                handleInvoiceInfoChange(
+                                                    e,
+                                                    invoiceIndex,
+                                                    "consignee"
+                                                )
+                                            }
+                                            className={`border p-2 ml-2 rounded-md ${isEmpty(invoice.invoiceInformation?.consignee)
+                                                ? "border-red-500"
+                                                : "border-gray-300"
+                                                }`}
+                                        />
+                                    </p>
+                                </div>
+
+                                {/* Invoice Date */}
+                                <div>
+                                    <p className="text-gray-600">Invoice Date:</p>
+                                    <input
+                                        type="date"
+                                        readOnly
+                                        value={
+                                            invoice.invoiceInformation?.invoiceDate
+                                                ? formatDate(
+                                                    invoice.invoiceInformation.invoiceDate
+                                                )
+                                                : ""
+                                        }
+                                        className="border-gray-300 rounded-md p-2"
+                                    />
+                                </div>
+
+                                <div className="text-right">
+                                    <p className="text-gray-600">Total Amount:</p>
+                                    <div className="font-semibold">
+                                        ₹{invoice.chargesAndTotals?.amountPayable || "0.00"}
                                     </div>
                                 </div>
-                                {/* Invoice Items */}
-                                <table className="min-w-full bg-white rounded-md">
-                                    <thead className="bg-gray-200">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left">Product Name</th>
-                                            <th className="px-6 py-3 text-left">Quantity</th>
-                                            <th className="px-6 py-3 text-left">Tax</th>
-                                            <th className="px-6 py-3 text-left">Amount</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="rounded-md">
-                                        {invoice.items?.map((item, itemIndex) => (
-                                            <tr
-                                                key={itemIndex}
-                                                className="hover:bg-gray-100 border-b last:border-b-0"
-                                            >
-                                                <td className="px-6 py-4">
-                                                    <input
-                                                        type="text"
-                                                        value={item.description || item.productName || ''}
-                                                        onChange={(e) =>
-                                                            handleChange(
-                                                                e,
-                                                                invoiceIndex,
-                                                                itemIndex,
-                                                                'description'
-                                                            )
-                                                        }
-                                                        className="w-full border-gray-300 rounded-md p-2"
-                                                    />
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <input
-                                                        type="text"
-                                                        value={formatNumberWithoutCommas(
-                                                            item.quantity || ''
-                                                        )}
-                                                        onChange={(e) =>
-                                                            handleChange(
-                                                                e,
-                                                                invoiceIndex,
-                                                                itemIndex,
-                                                                'quantity'
-                                                            )
-                                                        }
-                                                        className="w-full border-gray-300 rounded-md p-2"
-                                                    />
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <input
-                                                        type="text"
-                                                        value={item.gst ? item.gst.split(' ')[0] : ''}
-                                                        onChange={(e) =>
-                                                            handleChange(e, invoiceIndex, itemIndex, 'gst')
-                                                        }
-                                                        className="w-full border-gray-300 rounded-md p-2"
-                                                    />
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <input
-                                                        type="text"
-                                                        value={formatNumberWithoutCommas(item.amount || 0)}
-                                                        onChange={(e) =>
-                                                            handleChange(e, invoiceIndex, itemIndex, 'amount')
-                                                        }
-                                                        className="w-full border-gray-300 rounded-md p-2"
-                                                    />
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
                             </div>
-                        ))}
-                    </div>
+
+                            {/* Items */}
+                            <table className="min-w-full bg-white rounded-md">
+                                <thead className="bg-gray-200">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left">Product</th>
+                                        <th className="px-6 py-3 text-left">Qty</th>
+                                        <th className="px-6 py-3 text-left">GST %</th>
+                                        <th className="px-6 py-3 text-left">Amount</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    {invoice.items?.map((item, itemIndex) => (
+                                        <tr key={itemIndex} className="border-b hover:bg-gray-100">
+                                            <td className="px-6 py-4">
+                                                <input
+                                                    type="text"
+                                                    value={item.description || ""}
+                                                    onChange={(e) =>
+                                                        handleItemChange(
+                                                            e,
+                                                            invoiceIndex,
+                                                            itemIndex,
+                                                            "description"
+                                                        )
+                                                    }
+                                                    className="w-full border p-2 rounded-md"
+                                                />
+                                            </td>
+
+                                            <td className="px-6 py-4">
+                                                <input
+                                                    type="text"
+                                                    value={formatNumberWithoutCommas(item.quantity)}
+                                                    onChange={(e) =>
+                                                        handleItemChange(
+                                                            e,
+                                                            invoiceIndex,
+                                                            itemIndex,
+                                                            "quantity"
+                                                        )
+                                                    }
+                                                    className="w-full border p-2 rounded-md"
+                                                />
+                                            </td>
+
+                                            <td className="px-6 py-4">
+                                                <input
+                                                    type="text"
+                                                    value={item.gstRate || ""}
+                                                    onChange={(e) =>
+                                                        handleItemChange(
+                                                            e,
+                                                            invoiceIndex,
+                                                            itemIndex,
+                                                            "gstRate"
+                                                        )
+                                                    }
+                                                    className="w-full border p-2 rounded-md"
+                                                />
+                                            </td>
+
+                                            <td className="px-6 py-4">
+                                                <input
+                                                    type="text"
+                                                    value={formatNumberWithoutCommas(item.amount)}
+                                                    onChange={(e) =>
+                                                        handleItemChange(
+                                                            e,
+                                                            invoiceIndex,
+                                                            itemIndex,
+                                                            "amount"
+                                                        )
+                                                    }
+                                                    className="w-full border p-2 rounded-md"
+                                                />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ))}
                 </div>
             )}
         </section>

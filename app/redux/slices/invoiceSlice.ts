@@ -1,28 +1,57 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
+export interface InvoiceTaxDetail {
+  taxType: string; // CGST/SGST/IGST
+  percentage: string;
+  amount: string;
+}
+
 export interface InvoiceItem {
   id: string;
   description?: string;
-  rate?: string;
   quantity?: string;
+  rate?: string;
   taxableValue?: string;
-  gst?: string;
-  productName?: string;
+  gstRate?: string;
+  gstAmount?: string;
+  discount?: string;
   amount?: string;
-  [key: string]: string | undefined;
 }
 
-interface ChargesAndTotals {
+export interface ChargesAndTotals {
   makingCharges?: string;
   debitCardCharges?: string;
   shippingCharges?: string;
   taxableAmount?: string;
-  cgst?: string | null;
-  sgst?: string | null;
-  total?: string;
+  taxDetails?: InvoiceTaxDetail[];
+  roundedTotal?: string;
   amountPayable?: string;
   totalAmountDue?: string;
   totalItemsQty?: string;
+}
+
+export interface InvoiceInformation {
+  consignee?: string;
+  consigneePhone?: string;
+  consigneeAddress?: string;
+  gstin?: string;
+  invoiceNumber?: string;
+  invoiceDate?: string;
+  placeOfSupply?: string;
+  companyName?: string;
+  companyAddress?: string;
+  companyGSTIN?: string;
+  companyPhone?: string;
+  companyEmail?: string;
+}
+
+export interface InvoiceData {
+  invoiceInformation?: InvoiceInformation;
+  items?: InvoiceItem[];
+  chargesAndTotals?: ChargesAndTotals;
+  bankDetails?: BankDetails;
+  notes?: string;
+  terms?: string;
 }
 
 interface BankDetails {
@@ -31,24 +60,6 @@ interface BankDetails {
   ifscCode?: string;
   branch?: string;
   beneficiaryName?: string;
-}
-
-interface InvoiceData {
-  invoiceInformation?: {
-    consignee?: string;
-    consigneePhone?: string;
-    gstin?: string;
-    invoiceNumber?: string;
-    invoiceDate?: string;
-    placeOfSupply?: string;
-    companyName?: string;
-    companyGSTIN?: string;
-    companyPhone?: string;
-  };
-  items?: InvoiceItem[];
-  chargesAndTotals?: ChargesAndTotals;
-  bankDetails?: BankDetails;
-  additionalNotes?: string;
 }
 
 interface InvoiceState {
@@ -64,59 +75,34 @@ const invoicesSlice = createSlice({
   initialState,
   reducers: {
     addInvoice: (state, action: PayloadAction<InvoiceData>) => {
-      state.invoiceData = [...(state.invoiceData || []), action.payload];
+      state.invoiceData?.push(action.payload);
     },
-    updateInvoice: (
+
+    updateInvoiceInformation: (
       state,
       action: PayloadAction<{
         invoiceIndex: number;
-        itemIndex: number;
-        field: string;
-        value: string;
+        data: Partial<InvoiceInformation>;
       }>
     ) => {
-      const { invoiceIndex, itemIndex, field, value } = action.payload;
+      const { invoiceIndex, data } = action.payload;
       const invoice = state.invoiceData?.[invoiceIndex];
+      if (!invoice) return;
 
-      if (invoice) {
-        if (itemIndex !== -1) {
-          const item = invoice.items?.[itemIndex];
-          if (item) {
-            item[field] = value;
-          }
-        } else {
-          // For updating invoice-level fields
-          if (
-            invoice.invoiceInformation &&
-            field in invoice.invoiceInformation
-          ) {
-            invoice.invoiceInformation = {
-              ...invoice.invoiceInformation,
-              [field]: value,
-            };
-          } else if (invoice.bankDetails && field in invoice.bankDetails) {
-            invoice.bankDetails = {
-              ...invoice.bankDetails,
-              [field]: value,
-            };
-          } else {
-            invoice.invoiceInformation = {
-              ...invoice.invoiceInformation,
-              [field]: value,
-            };
-          }
-        }
-      }
+      invoice.invoiceInformation = {
+        ...invoice.invoiceInformation,
+        ...data,
+      };
     },
+
     addItem: (
       state,
       action: PayloadAction<{ invoiceIndex: number; item: InvoiceItem }>
     ) => {
       const { invoiceIndex, item } = action.payload;
       const invoice = state.invoiceData?.[invoiceIndex];
-      if (invoice) {
-        invoice.items = [...(invoice.items || []), item];
-      }
+      if (!invoice) return;
+      invoice.items = [...(invoice.items || []), item];
     },
 
     updateItem: (
@@ -124,13 +110,14 @@ const invoicesSlice = createSlice({
       action: PayloadAction<{
         invoiceIndex: number;
         itemIndex: number;
-        field: string;
+        field: keyof InvoiceItem;
         value: string;
       }>
     ) => {
       const { invoiceIndex, itemIndex, field, value } = action.payload;
       const invoice = state.invoiceData?.[invoiceIndex];
       if (!invoice?.items?.[itemIndex]) return;
+
       invoice.items[itemIndex][field] = value;
     },
 
@@ -140,60 +127,95 @@ const invoicesSlice = createSlice({
     ) => {
       const { invoiceIndex, itemIndex } = action.payload;
       const invoice = state.invoiceData?.[invoiceIndex];
-      if (invoice?.items) {
-        invoice.items = invoice.items.filter((_, i) => i !== itemIndex);
-      }
+      if (!invoice?.items) return;
+
+      invoice.items = invoice.items.filter((_, i) => i !== itemIndex);
     },
-    addCustomer: (
+
+    updateChargesAndTotals: (
       state,
       action: PayloadAction<{
         invoiceIndex: number;
-        customer: {
-          consignee?: string;
-          consigneePhone?: string;
-          gstin?: string;
-          placeOfSupply?: string;
-        };
+        data: Partial<ChargesAndTotals>;
       }>
     ) => {
-      const { invoiceIndex, customer } = action.payload;
+      const { invoiceIndex, data } = action.payload;
       const invoice = state.invoiceData?.[invoiceIndex];
       if (!invoice) return;
 
-      invoice.invoiceInformation = {
-        ...invoice.invoiceInformation,
-        ...customer,
+      invoice.chargesAndTotals = {
+        ...invoice.chargesAndTotals,
+        ...data,
       };
     },
 
-    updateCustomer: (
+    updateTaxDetails: (
       state,
       action: PayloadAction<{
         invoiceIndex: number;
-        field: string;
-        value: string;
+        taxDetails: InvoiceTaxDetail[];
       }>
     ) => {
-      const { invoiceIndex, field, value } = action.payload;
+      const { invoiceIndex, taxDetails } = action.payload;
       const invoice = state.invoiceData?.[invoiceIndex];
       if (!invoice) return;
 
-      invoice.invoiceInformation = {
-        ...invoice.invoiceInformation,
-        [field]: value,
+      invoice.chargesAndTotals = {
+        ...invoice.chargesAndTotals,
+        taxDetails,
       };
+    },
+
+    updateBankDetails: (
+      state,
+      action: PayloadAction<{
+        invoiceIndex: number;
+        data: Partial<BankDetails>;
+      }>
+    ) => {
+      const { invoiceIndex, data } = action.payload;
+      const invoice = state.invoiceData?.[invoiceIndex];
+      if (!invoice) return;
+
+      invoice.bankDetails = {
+        ...invoice.bankDetails,
+        ...data,
+      };
+    },
+
+    updateNotes: (
+      state,
+      action: PayloadAction<{ invoiceIndex: number; notes: string }>
+    ) => {
+      const { invoiceIndex, notes } = action.payload;
+      const invoice = state.invoiceData?.[invoiceIndex];
+      if (!invoice) return;
+      invoice.notes = notes;
+    },
+
+    updateTerms: (
+      state,
+      action: PayloadAction<{ invoiceIndex: number; terms: string }>
+    ) => {
+      const { invoiceIndex, terms } = action.payload;
+      const invoice = state.invoiceData?.[invoiceIndex];
+      if (!invoice) return;
+      invoice.terms = terms;
     },
   },
 });
 
 export const {
   addInvoice,
-  updateInvoice,
+  updateInvoiceInformation,
   addItem,
-  updateCustomer,
   updateItem,
   removeItem,
-  addCustomer,
+  updateChargesAndTotals,
+  updateTaxDetails,
+  updateBankDetails,
+  updateNotes,
+  updateTerms,
 } = invoicesSlice.actions;
 
 export default invoicesSlice.reducer;
