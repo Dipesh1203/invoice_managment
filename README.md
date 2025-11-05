@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Invoice Management (Next.js)
 
-## Getting Started
+Live demo: https://invoice-managment-kohl.vercel.app/
 
-First, run the development server:
+A lightweight invoice management web app built with Next.js. This repository contains the frontend and a minimal API for uploading and processing invoice data (extraction + processing routes included under `app/api`). The app supports uploading spreadsheets, normalizing invoice data, and basic invoice CRUD flows.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Key features
+
+- Upload and extract data from invoice files (XLSX/CSV).
+- Normalize and process invoice records for the app's store.
+- Simple UI with pages for Customers, Invoices and Products.
+- Redux Toolkit for state management and modular slices.
+- Ready for deployment to Vercel (production-ready Next.js configuration).
+
+## Tech stack
+
+- Next.js 16 (App Router)
+- React 19
+- Redux Toolkit + React-Redux
+- Tailwind CSS
+- Mongoose (optional server-side persistence)
+- Utilities: lodash, uuid, xlsx
+
+## Repo structure (important files)
+
+- `app/` – Next.js app directory (pages and API routes under `app/api`)
+  - `app/api/extraction/route.ts` – invoice extraction endpoint
+  - `app/api/processing/route.ts` – invoice processing endpoint
+  - `app/components/` – UI components (SectionCard, UploadBtn, WrapperProvider)
+  - `app/customers`, `app/invoices`, `app/products` – top-level pages
+- `redux/` – store and slices
+- `utils/` – helpers (`normalizeInvoice.ts`, `utils.ts`)
+- `public/` – static assets
+
+## Getting started (development)
+
+Requirements: Node.js (v18+ recommended) and pnpm (or npm/yarn).
+
+1. Install dependencies
+
+```powershell
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Run the dev server
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```powershell
+pnpm dev
+# then open http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Build for production
 
-## Learn More
+```powershell
+pnpm build
+pnpm start
+```
 
-To learn more about Next.js, take a look at the following resources:
+Available scripts (from `package.json`)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `dev` – start Next.js dev server
+- `build` – produce production build
+- `start` – run Next.js in production mode
+- `lint` – run ESLint
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Environment variables
 
-## Deploy on Vercel
+This project can be extended to use a database. Typical env vars you may need when enabling DB features:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `MONGODB_URI` – MongoDB connection string (if using the Mongoose-backed API)
+- `NEXT_PUBLIC_SOME_KEY` – any public keys used in the client
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Create a `.env.local` in the project root and add values as needed. The app runs without these if you only use client-side state.
+
+## Deployment
+
+The app is configured to work well on Vercel. To deploy:
+
+1. Push your repository to GitHub (or connect your Git provider to Vercel).
+2. Create a new Vercel project and point it to the repo.
+3. Add any required environment variables in the Vercel dashboard.
+4. Deploy — Vercel will run `pnpm build` by default for Next.js apps.
+
+Live deployment (provided): https://invoice-managment-kohl.vercel.app/
+
+## Contributing
+
+Contributions are welcome. A minimal process:
+
+1. Fork the repo
+2. Create a feature branch
+3. Open a PR with a clear title and description
+
+Please follow existing code style and lint rules.
+
+## License
+
+This project is provided under the MIT license.
+
+---
+
+If you'd like, I can also:
+
+- add a short CONTRIBUTING.md
+- add a development environment guide (Docker / npm vs pnpm notes)
+- wire up a basic .env.example with recommended vars
+
+Tell me which of those you'd like next.
