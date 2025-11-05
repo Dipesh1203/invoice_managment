@@ -4,8 +4,6 @@ import { base64ToGenerativePart } from "@/app/utils/utils";
 import { v4 as uuidv4 } from "uuid";
 import { InvoiceItem } from "@/app/redux/slices/invoiceSlice";
 
-const API_KEY = process.env.GEMINI_API_KEY;
-
 export async function GET(request: Request) {
   return NextResponse.json({ status: "OK" }, { status: 200 });
 }
@@ -37,7 +35,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
