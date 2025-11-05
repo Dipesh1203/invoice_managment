@@ -35,11 +35,16 @@ export async function POST(req: Request) {
       );
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey =
+      process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
-        { success: false, message: "LLM_API_KEY environment variable not set" },
+        {
+          success: false,
+          message:
+            "GEMINI_API_KEY environment variable not set on the server. Set a server-side env var named GEMINI_API_KEY in Vercel (recommended).",
+        },
         { status: 500 }
       );
     }
@@ -128,8 +133,12 @@ Important Rules:
     // Try to parse LLM response as JSON so downstream code receives an object
     try {
       const parsed = JSON.parse(extractedData);
-      if (parsed && parsed?.items) {
-        parsed.map((i: InvoiceItem) => ({ ...i, id: uuidv4() }));
+      // If items is present and is an array, ensure each item has a unique id
+      if (parsed && Array.isArray(parsed.items)) {
+        parsed.items = parsed.items.map((i: InvoiceItem) => ({
+          ...i,
+          id: uuidv4(),
+        }));
       }
       return NextResponse.json({ success: true, data: parsed });
     } catch (e) {
